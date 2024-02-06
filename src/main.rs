@@ -1,6 +1,7 @@
-use goodreads_api::lib::add;
+use goodreads_api::goodreads_api::search;
+use tokio::main;
 
-fn main() {
-    println!("Hello, world!");
-    println!("{}", add(3, 8));
+#[tokio::main]
+async fn main() {
+    search("Dresden Files").await;
 }
