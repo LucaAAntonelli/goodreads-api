@@ -2,6 +2,8 @@ pub mod goodreads_api {
     use reqwest::get;
     use scraper::{Html, Selector};
 
+ 
+
     pub async fn search(query: &str) {
         let response = get(format!("https://www.goodreads.com/search?q={}&qid=", query.replace(" ", "+"))).await.expect("Could not send request");
 
@@ -13,10 +15,9 @@ pub mod goodreads_api {
         let document = Html::parse_document(&body);
 
         let title_selector = Selector::parse(".bookTitle").expect("Failed to parse CSS selector");
-        for (element, url) in document.select(&title_selector).into_iter().zip(url_vec) {
-            let title = element.text().collect::<Vec<_>>().join("");
-            println!("Found book {} with URL {}", title, url);
-        }
+        let book_title = document.select(&title_selector).into_iter().next().unwrap().text().collect::<Vec<_>>().join("");
+        let book_url = format!("https://goodreads.com{}", url_vec[0]);
+        println!("Found book {book_title} at {book_url}");
     }
 
     fn extract_href(html: &str) -> Vec<String> {
@@ -42,6 +43,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        block_on(goodreads_api::search("Dresden Files"));
+        block_on(goodreads_api::search("White Night dresden files"));
     }
 }
