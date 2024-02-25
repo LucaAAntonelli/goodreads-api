@@ -63,7 +63,7 @@ pub mod goodreads_api {
         let document = Html::parse_document(&body);
 
         let title_selector = Selector::parse(".bookTitle").expect("Failed to parse CSS selector");
-        let titles = document.select(&title_selector).map(|x| x.text().collect::<Vec<_>>().join("")).collect::<Vec<_>>();
+        let titles = document.select(&title_selector).map(|x| x.text().collect::<Vec<_>>().join("").trim().to_owned()).collect::<Vec<_>>();
         for (idx, title) in titles.clone().into_iter().enumerate() {
             println!("{idx}: {title}");
         }
@@ -103,7 +103,15 @@ pub mod goodreads_api {
 mod tests {
 
     use tokio_test::block_on;
+    use crate::goodreads_api::search;
+
     use super::goodreads_api::Book;
+
+    #[test]
+    fn test_functioanlity() {
+        let book = block_on(search("White night dresden files"));
+        println!("{:?}", book);
+    }
 
     #[test]
     fn test_book() {
