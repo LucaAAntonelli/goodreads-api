@@ -102,15 +102,8 @@ pub mod goodreads_api {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use tokio_test::block_on;
     use super::goodreads_api::Book;
-
-    #[test]
-    fn it_works() {
-        let result = block_on(goodreads_api::search("White Night dresden files"));
-        println!("{:?}", result);
-    }
 
     #[test]
     fn test_book() {
