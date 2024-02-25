@@ -1,4 +1,6 @@
 pub mod goodreads_api {
+    use std::io;
+
     use reqwest::get;
     use scraper::{Html, Selector};
 
@@ -50,7 +52,7 @@ pub mod goodreads_api {
         }
     }
 
-    pub async fn search(query: &str) {
+    pub async fn search(query: &str) -> Book {
         let response = get(format!("https://www.goodreads.com/search?q={}&qid=", query.replace(" ", "+"))).await.expect("Could not send request");
 
 
@@ -61,9 +63,23 @@ pub mod goodreads_api {
         let document = Html::parse_document(&body);
 
         let title_selector = Selector::parse(".bookTitle").expect("Failed to parse CSS selector");
-        let book_title = document.select(&title_selector).into_iter().next().unwrap().text().collect::<Vec<_>>().join("");
-        let book_url = format!("https://goodreads.com{}", url_vec[0]);
-        println!("Found book {book_title} at {book_url}");
+        let titles = document.select(&title_selector).map(|x| x.text().collect::<Vec<_>>().join("")).collect::<Vec<_>>();
+        for (idx, title) in titles.clone().into_iter().enumerate() {
+            println!("{idx}: {title}");
+        }
+
+        println!("Select one of the books via index");
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        let input = input.trim();
+        let index = input.parse::<usize>().unwrap();
+
+
+        let book_title = (&titles[index]).to_owned();
+        let book_url = format!("https://goodreads.com{}", url_vec[index]);
+        println!("Selected book {book_title}");
+
+        Book::new(book_url).await
     }
 
     fn extract_href(html: &str) -> Vec<String> {
@@ -92,7 +108,8 @@ mod tests {
 
     #[test]
     fn it_works() {
-        block_on(goodreads_api::search("White Night dresden files"));
+        let result = block_on(goodreads_api::search("White Night dresden files"));
+        println!("{:?}", result);
     }
 
     #[test]
