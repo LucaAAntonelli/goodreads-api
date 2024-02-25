@@ -108,6 +108,7 @@ mod tests {
     use super::goodreads_api::Book;
 
     #[test]
+    #[ignore = "cannot be tested without user input"]
     fn test_functioanlity() {
         let book = block_on(search("White night dresden files"));
         println!("{:?}", book);
