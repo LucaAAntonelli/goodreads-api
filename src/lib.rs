@@ -8,7 +8,7 @@ pub mod goodreads_api {
     pub struct Book {
         title: String,
         authors: Vec<String>,
-        pages: u32,
+        pages: u64,
         series: Option<String>
     }
 
@@ -34,7 +34,7 @@ pub mod goodreads_api {
 
             let page_str = doc.select(&pages_selector).next().expect("asdf").text().collect::<Vec<_>>().join("");
             
-            let pages: u32 = page_str.split(" ").collect::<Vec<_>>()[0].parse().unwrap();
+            let pages: u64 = page_str.split(" ").collect::<Vec<_>>()[0].parse().unwrap();
             
             let series_selector = Selector::parse("a[aria-label^=Book]").expect("Error creating series selector");
             
@@ -47,8 +47,24 @@ pub mod goodreads_api {
             Self {title, authors, pages, series}
         }
 
-        pub fn create_book_by_hand(title: String, authors: Vec<String>, pages: u32, series: Option<String>) -> Self {
+        pub fn create_book_by_hand(title: String, authors: Vec<String>, pages: u64, series: Option<String>) -> Self {
             Self{title, authors, pages, series}
+        }
+
+        pub fn get_title(&self) -> &String {
+            &self.title
+        }
+
+        pub fn get_pages(&self) -> u64 {
+            self.pages
+        }
+
+        pub fn get_authors(&self) -> &Vec<String> {
+            &self.authors
+        }
+
+        pub fn get_series(&self) -> &Option<String> {
+            &self.series
         }
     }
 
@@ -118,19 +134,19 @@ mod tests {
     fn test_book() {
          let result = block_on(Book::new(String::from("https://www.goodreads.com/book/show/47212.Storm_Front?from_search=true&from_srp=true&qid=5OiExORxlI&rank=1")));
 
-         assert_eq!(result, Book::create_book_by_hand("Storm Front".to_owned(), vec!["Jim Butcher".to_owned()], 355 as u32, Some("The Dresden Files".to_owned())));
+         assert_eq!(result, Book::create_book_by_hand("Storm Front".to_owned(), vec!["Jim Butcher".to_owned()], 355 as u64, Some("The Dresden Files".to_owned())));
     }
 
     #[test]
     fn test_multiple_authors() {
         let result = block_on(Book::new(String::from("https://www.goodreads.com/book/show/7743175-a-memory-of-light?from_search=true&from_srp=true&qid=kWxTLnUHTj&rank=1")));
-        assert_eq!(result, Book::create_book_by_hand("A Memory of Light".to_owned(), vec!["Brandon Sanderson".to_owned(), "Robert Jordan".to_owned()], 912 as u32, Some("The Wheel of Time".to_owned())));
+        assert_eq!(result, Book::create_book_by_hand("A Memory of Light".to_owned(), vec!["Brandon Sanderson".to_owned(), "Robert Jordan".to_owned()], 912 as u64, Some("The Wheel of Time".to_owned())));
     }
 
     #[test]
     fn test_no_series() {
         let result = block_on(Book::new(String::from("https://www.goodreads.com/book/show/61439040-1984?from_search=true&from_srp=true&qid=52Ze8HuhoQ&rank=1")));
-        assert_eq!(result, Book::create_book_by_hand("1984".to_owned(), vec!["George Orwell".to_owned(), "Thomas Pynchon".to_owned()], 368 as u32, None));
+        assert_eq!(result, Book::create_book_by_hand("1984".to_owned(), vec!["George Orwell".to_owned(), "Thomas Pynchon".to_owned()], 368 as u64, None));
 
     
 
