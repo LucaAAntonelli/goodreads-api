@@ -11,13 +11,14 @@ pub mod goodreads_api {
         title: String,
         authors: Vec<String>,
         pages: u64,
-        series: Option<String>
+        series: Option<String>,
+        url: String
     }
 
     impl GoodreadsBook {
 
-        pub fn new(title: String, authors: Vec<String>, pages: u64, series: Option<String>) -> Self {
-            Self {title, authors, pages, series}
+        pub fn new(title: String, authors: Vec<String>, pages: u64, series: Option<String>, url: String) -> Self {
+            Self {title, authors, pages, series, url}
         }
 
         pub fn search(query: &str) -> Vec<Self> {
@@ -56,6 +57,6 @@ mod tests {
     #[test]
     fn test_search() {
         let books = goodreads_api::GoodreadsBook::search("The Hobbit");
-        assert_eq!(books, vec![GoodreadsBook::new("The Hobbit".to_string(), vec!["J.R.R. Tolkien".to_string()], 310, Option::None)]);
+        assert_eq!(books, vec![GoodreadsBook::new("The Hobbit".to_string(), vec!["J.R.R. Tolkien".to_string()], 310, Option::None, "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string())]);
     }
 }
