@@ -13,11 +13,26 @@ pub mod goodreads_api {
         url: String
     }
 
+    fn extract_metadata_from_book_url(url: &str) -> (Vec<String>, u64, Option<String>) {
+        let response = reqwest::blocking::get(url).unwrap().text().unwrap();
+        let document = Html::parse_document(&response);
+
+        let authors = vec![];
+        let pages = 0;
+        let series = Option::None;
+
+        (authors, pages, series)
+
+        
+    }
+
     impl GoodreadsBook {
 
         pub fn new(title: String, authors: Vec<String>, pages: u64, series: Option<String>, url: String) -> Self {
             Self {title, authors, pages, series, url}
         }
+
+        
 
         pub fn search(query: &str) -> Vec<Self> {
 
@@ -27,9 +42,9 @@ pub mod goodreads_api {
 
             let document = Html::parse_document(&response);
 
-            let tr_selector = scraper::Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
+            let tr_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
 
-            let a_selector = scraper::Selector::parse("a:not([class])").unwrap();
+            let a_selector = Selector::parse("a:not([class])").unwrap();
 
             let mut books = vec![];
 
@@ -37,8 +52,9 @@ pub mod goodreads_api {
                 
                 for a_element in tr_element.select(&a_selector) {
                     let title = a_element.value().attr("title").expect("No title found").to_string();
-                    let url = a_element.value().attr("href").expect("No url found").to_string();
-                    books.push(GoodreadsBook::new(title, vec![], 0, Option::None, url));
+                    let url = "https://www.goodreads.com".to_string() + a_element.value().attr("href").expect("No url found");
+                    let (authors, pages, series) = extract_metadata_from_book_url(&url);
+                    books.push(GoodreadsBook::new(title, authors, pages, series, url));
                 }
             }
             books
@@ -51,7 +67,6 @@ pub mod goodreads_api {
 
 mod tests {
     use goodreads_api::GoodreadsBook;
-
     use super::*;
 
     #[test]
