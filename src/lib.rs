@@ -1,6 +1,4 @@
 pub mod goodreads_api {
-    use std::io;
-
     // use reqwest::get;
     use reqwest;
 
@@ -33,15 +31,17 @@ pub mod goodreads_api {
 
             let a_selector = scraper::Selector::parse("a:not([class])").unwrap();
 
+            let mut books = vec![];
+
             for tr_element in document.select(&tr_selector) {
                 
                 for a_element in tr_element.select(&a_selector) {
-                    if let Some(title) = a_element.value().attr("title") {
-                        println!("{}", title);
-                    }
+                    let title = a_element.value().attr("title").expect("No title found").to_string();
+                    let url = a_element.value().attr("href").expect("No url found").to_string();
+                    books.push(GoodreadsBook::new(title, vec![], 0, Option::None, url));
                 }
             }
-            vec![]
+            books
         }
     }
 
@@ -55,8 +55,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_search() {
+    fn test_hobbit() {
         let books = goodreads_api::GoodreadsBook::search("The Hobbit");
-        assert_eq!(books, vec![GoodreadsBook::new("The Hobbit".to_string(), vec!["J.R.R. Tolkien".to_string()], 310, Option::None, "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string())]);
+        assert_eq!(books[0..1], vec![GoodreadsBook::new("The Hobbit".to_string(), vec!["J.R.R. Tolkien".to_string()], 310, Option::None, "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string())]);
+    }
+
+    #[test]
+    fn test_neverwhere() {
+        let books = goodreads_api::GoodreadsBook::search("Neverwhere");
+        assert_eq!(books[0..1], vec![GoodreadsBook::new("Neverwhere".to_string(), vec!["Neil Gaiman".to_string()], 370, Option::None, "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string())]);
     }
 }
