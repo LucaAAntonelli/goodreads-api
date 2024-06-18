@@ -1,11 +1,13 @@
 pub mod goodreads_api {
-    // use reqwest::get;
+    // TODO: Change implementation of metadata loading
+    // Possible options: threading, only load metadata of chosen book, ...
     use reqwest;
 
     use scraper::{Html, Selector};
 
     #[derive(Debug, PartialEq)]
     pub struct GoodreadsBook {
+        
         title: String,
         authors: Vec<String>,
         pages: u64,
