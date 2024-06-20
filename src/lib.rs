@@ -45,6 +45,9 @@ pub mod goodreads_api {
 
             let document = Html::parse_document(&response);
 
+            // TODO: Select individual books via table tag <tr>, then title and possible series from <a class="bookTitle">
+            // and authors from <a class="authorName">, prevents issues with selecting simpy by <a> etc.
+
             let tr_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
 
             let a_selector_title = Selector::parse("a:not([class])").unwrap();
