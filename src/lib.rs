@@ -2,6 +2,7 @@ pub mod goodreads_api {
     // TODO: Change implementation of metadata loading
     // Possible options: threading, only load metadata of chosen book, ...
     use reqwest;
+    use itertools::izip;
 
     use scraper::{Html, Selector};
 
@@ -46,16 +47,31 @@ pub mod goodreads_api {
 
             let tr_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
 
-            let a_selector = Selector::parse("a:not([class])").unwrap();
+            let a_selector_title = Selector::parse("a:not([class])").unwrap();
+
+            let a_selector_authors = Selector::parse(r#"a.authorName"#).unwrap();
+
+            let span_selector = Selector::parse(r#"span[itemprop="name"]"#).unwrap();
 
             let mut books = vec![];
 
             for tr_element in document.select(&tr_selector) {
                 
-                for a_element in tr_element.select(&a_selector) {
-                    let title = a_element.value().attr("title").expect("No title found").to_string();
-                    let url = "https://www.goodreads.com".to_string() + a_element.value().attr("href").expect("No url found");
-                    let (authors, pages, series) = extract_metadata_from_book_url(&url);
+                for (a_element_title, a_element_authors) in izip!(tr_element.select(&a_selector_title), tr_element.select(&a_selector_authors)) {
+                    let title = a_element_title.value().attr("title").expect("No title found").to_string();
+                    println!("Found title: {title}");
+                    let url = "https://www.goodreads.com".to_string() + a_element_title.value().attr("href").expect("No url found");
+                    let mut authors: Vec<String> = Vec::new();
+                    for span_element in a_element_authors.select(&span_selector) {
+                        // Access and print the text content of the <span> element
+                        let author = span_element.text().collect::<Vec<_>>().concat();
+                        println!("Found author name: {}", author);
+                        authors.push(author);
+                    }
+                    // let (authors, pages, series) = extract_metadata_from_book_url(&url);
+                    let pages = 0;
+                    let series = Option::None;
+                    
                     books.push(GoodreadsBook::new(title, authors, pages, series, url));
                 }
             }
