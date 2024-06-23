@@ -11,3 +11,4 @@ scraper = "0.12"
 tokio-test = "0.4"
 tokio = { version = "1", features = ["full"]}
 itertools = "0.13.0"
+regex = "1.10.5"
