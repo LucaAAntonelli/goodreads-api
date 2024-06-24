@@ -6,7 +6,7 @@ pub mod goodreads_api {
 
     use scraper::{Html, Selector};
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug)]
     pub struct GoodreadsBook {
         
         title: String,
@@ -21,7 +21,22 @@ pub mod goodreads_api {
         let response = reqwest::blocking::get(url).unwrap().text().unwrap();
         let document = Html::parse_document(&response);
 
-        let pages = 0;
+        let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
+
+
+        let pages = document
+                            .select(&pages_selector)
+                            .next()
+                            .expect("No pages found")
+                            .text()
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .trim()
+                            .split_whitespace()
+                            .next()
+                            .expect("No pages found")
+                            .parse::<u64>()
+                            .unwrap_or_default();
 
         pages
 
@@ -88,20 +103,40 @@ pub mod goodreads_api {
         }
     }
 
+    impl PartialEq for GoodreadsBook {
+        fn eq(&self, other: &Self) -> bool {
+            self.title == other.title && self.authors == other.authors && self.pages == other.pages && self.series == other.series && self.index == other.index
+        }
+    }
+
 }
 
 mod tests {
+    use crate::goodreads_api::GoodreadsBook;
+
     use super::goodreads_api;
+
+    
 
     #[test]
     fn test_hobbit() {
         let books = goodreads_api::GoodreadsBook::search("The Hobbit");
-        assert_eq!(books[0..1], vec![goodreads_api::GoodreadsBook::new("The Hobbit".to_string(), vec!["J.R.R. Tolkien".to_string()], 310, Option::None, Option::None, "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string())]);
+        assert_eq!(books[0], goodreads_api::GoodreadsBook::new("The Hobbit".to_string(), 
+                                                                vec!["J.R.R. Tolkien".to_string()], 
+                                                                366, 
+                                                                Option::Some("The Lord of the Rings".to_string()), 
+                                                                Option::Some(0.0), 
+                                                                "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string()));
     }
 
     #[test]
     fn test_neverwhere() {
         let books = goodreads_api::GoodreadsBook::search("Neverwhere");
-        assert_eq!(books[0..1], vec![goodreads_api::GoodreadsBook::new("Neverwhere".to_string(), vec!["Neil Gaiman".to_string()], 370, Option::None, Option::None, "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string())]);
+        assert_eq!(books[0], goodreads_api::GoodreadsBook::new("Neverwhere".to_string(), 
+                                                                vec!["Neil Gaiman".to_string()], 
+                                                                370, 
+                                                                Option::Some("London Below".to_string()), 
+                                                                Option::Some(1.0), 
+                                                                "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()));
     }
 }
