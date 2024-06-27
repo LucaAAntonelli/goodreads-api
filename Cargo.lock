@@ -379,6 +379,7 @@ name = "goodreads-api"
 version = "0.1.0"
 dependencies = [
  "itertools",
+ "log",
  "regex",
  "reqwest",
  "scraper",
