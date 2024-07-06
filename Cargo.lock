@@ -383,6 +383,7 @@ dependencies = [
  "regex",
  "reqwest",
  "scraper",
+ "serde",
  "tokio",
  "tokio-test",
 ]

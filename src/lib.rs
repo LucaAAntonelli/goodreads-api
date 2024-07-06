@@ -6,7 +6,7 @@ use reqwest;
 use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, debug, error};
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GoodreadsBook {
     title: String,
     authors: Vec<String>,
