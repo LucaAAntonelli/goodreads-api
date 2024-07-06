@@ -2,7 +2,8 @@ pub mod goodreads_api {
 
 use core::fmt;
 use std::fmt::{Display, Formatter};
-use reqwest;
+use reqwest::Client;
+use tokio::runtime::Runtime;
 use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, debug, error};
@@ -59,32 +60,34 @@ impl GoodreadsBook {
         self.url.clone()
     }
 
-    pub fn search(query: &str) -> Vec<Self> {
+    pub async fn search(query: &str) -> Vec<Self> {
         let url = format!("https://www.goodreads.com/search?q={}&tab=books", query);
         info!("Sending request to URL: {}", url);
-
-        let response = reqwest::blocking::get(&url)
+    
+        let client = Client::new();
+        let response = client.get(&url)
+            .send()
+            .await
             .unwrap_or_else(|err| {
                 error!("Failed to send request: {}", err);
                 panic!("Failed to send request to Goodreads API");
             })
             .text()
+            .await
             .unwrap_or_else(|err| {
                 error!("Failed to parse response: {}", err);
                 panic!("Failed to parse response from Goodreads API");
             });
         debug!("Received response: {}", response);
-
+    
         let document = Html::parse_document(&response);
-        let book_selector =
-            Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
+        let book_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
         let title_series_selector = Selector::parse("a[class=bookTitle]").unwrap();
         let authors_selector = Selector::parse("a[class=authorName]").unwrap();
         let mut books = vec![];
-
+    
         for book_element in document.select(&book_selector) {
-            let title_series_element =
-                book_element.select(&title_series_selector).next().expect("No title found");
+            let title_series_element = book_element.select(&title_series_selector).next().expect("No title found");
             let authors_elements = book_element.select(&authors_selector).collect::<Vec<_>>();
             let title_and_series = title_series_element
                 .text()
@@ -170,65 +173,98 @@ impl Display for GoodreadsBook {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::goodreads_api::GoodreadsBook;
+    use tokio::runtime::Runtime;
 
     #[test]
     fn test_hobbit() {
-        let books = GoodreadsBook::search("The Hobbit");
-        for (idx, book) in books.iter().enumerate() {
-            println!("{idx}: {book}");
-        }
-        assert_eq!(books[0], GoodreadsBook::new(
-                                                "The Hobbit".to_string(), 
-                                                vec!["J.R.R. Tolkien".to_string()], 
-                                                366, 
-                                                Some("The Lord of the Rings".to_string()), 
-                                                Some(0.0), 
-                                                "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string()));
+        // Create a tokio runtime
+        let rt = Runtime::new().unwrap();
+
+        // Run the test asynchronously
+        rt.block_on(async {
+            let books = GoodreadsBook::search("The Hobbit").await;
+            for (idx, book) in books.iter().enumerate() {
+                println!("{idx}: {book}");
+            }
+            assert_eq!(
+                books[0],
+                GoodreadsBook::new(
+                    "The Hobbit".to_string(),
+                    vec!["J.R.R. Tolkien".to_string()],
+                    366,
+                    Some("The Lord of the Rings".to_string()),
+                    Some(0.0),
+                    "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string()
+                )
+            );
+        });
     }
 
     #[test]
     fn test_neverwhere() {
-        let books = GoodreadsBook::search("Neverwhere");
-        for (idx, book) in books.iter().enumerate() {
-            println!("{idx}: {book}");
-        }
-        assert_eq!(books[0], GoodreadsBook::new(
-                                                "Neverwhere".to_string(), 
-                                                vec!["Neil Gaiman".to_string()], 
-                                                370, 
-                                                Some("London Below".to_string()), 
-                                                Some(1.0), 
-                                                "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()));
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let books = GoodreadsBook::search("Neverwhere").await;
+            for (idx, book) in books.iter().enumerate() {
+                println!("{idx}: {book}");
+            }
+            assert_eq!(
+                books[0],
+                GoodreadsBook::new(
+                    "Neverwhere".to_string(),
+                    vec!["Neil Gaiman".to_string()],
+                    370,
+                    Some("London Below".to_string()),
+                    Some(1.0),
+                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()
+                )
+            );
+        });
     }
 
     #[test]
     fn test_neverwhere_full() {
-        let books = GoodreadsBook::search("Neverwhere Neil Gaiman");
-        for (idx, book) in books.iter().enumerate() {
-            println!("{idx}: {book}");
-        }
-        assert_eq!(books[0], GoodreadsBook::new(
-                                                "Neverwhere".to_string(), 
-                                                vec!["Neil Gaiman".to_string()], 
-                                                370, 
-                                                Some("London Below".to_string()), 
-                                                Some(1.0), 
-                                                "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()));
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let books = GoodreadsBook::search("Neverwhere Neil Gaiman").await;
+            for (idx, book) in books.iter().enumerate() {
+                println!("{idx}: {book}");
+            }
+            assert_eq!(
+                books[0],
+                GoodreadsBook::new(
+                    "Neverwhere".to_string(),
+                    vec!["Neil Gaiman".to_string()],
+                    370,
+                    Some("London Below".to_string()),
+                    Some(1.0),
+                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()
+                )
+            );
+        });
     }
 
     #[test]
     fn test_bedlam() {
-        let books = GoodreadsBook::search("Bedlam Derek Landy");
-        for (idx, book) in books.iter().enumerate() {
-            println!("{idx}: {book}");
-        }
-        assert_eq!(books[0], GoodreadsBook::new(
-                                                "Bedlam".to_string(), 
-                                                vec!["Christopher Brookmyre".to_string()], 
-                                                400, 
-                                                None, 
-                                                None, 
-                                                "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string()));
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let books = GoodreadsBook::search("Bedlam Derek Landy").await;
+            for (idx, book) in books.iter().enumerate() {
+                println!("{idx}: {book}");
+            }
+            assert_eq!(
+                books[0],
+                GoodreadsBook::new(
+                    "Bedlam".to_string(),
+                    vec!["Christopher Brookmyre".to_string()],
+                    400,
+                    None,
+                    None,
+                    "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string()
+                )
+            );
+        });
     }
 }
