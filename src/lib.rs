@@ -3,7 +3,6 @@ pub mod goodreads_api {
 use core::fmt;
 use std::fmt::{Display, Formatter};
 use reqwest::Client;
-use tokio::runtime::Runtime;
 use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, debug, error};
