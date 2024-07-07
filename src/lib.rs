@@ -64,7 +64,7 @@ impl GoodreadsBook {
         let url = format!("https://www.goodreads.com/search?q={}&tab=books", query);
         info!("Sending request to URL: {}", url);
     
-        let client = Client::new();
+        let client = Client::builder().user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101").build().expect("Failed to build reqwest client");
         let response = client.get(&url)
             .send()
             .await
@@ -108,6 +108,7 @@ impl GoodreadsBook {
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
             let pages = extract_pages_from_url(&url);
+            // let pages = 0; 
             books.push(Self::new(title, authors, pages, series, index, url));
         }
         books
