@@ -14,6 +14,7 @@ pub struct GoodreadsBook {
     series: Option<String>,
     index: Option<f32>,
     url: String,
+    cover_image: Option<String>,
 }
 
 impl GoodreadsBook {
@@ -24,6 +25,7 @@ impl GoodreadsBook {
         series: Option<String>,
         index: Option<f32>,
         url: String,
+        cover_image: Option<String>,
     ) -> Self {
         Self {
             title,
@@ -32,6 +34,7 @@ impl GoodreadsBook {
             series,
             index,
             url,
+            cover_image,
         }
     }
 
@@ -59,6 +62,10 @@ impl GoodreadsBook {
         self.url.clone()
     }
 
+    pub fn cover_image(&self) -> Option<String> {
+        self.cover_image.clone()
+    }
+
     pub async fn search(query: &str) -> Vec<Self> {
         let url = format!("https://www.goodreads.com/search?q={}&tab=books", query);
         info!("Sending request to URL: {}", url);
@@ -83,6 +90,7 @@ impl GoodreadsBook {
         let book_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
         let title_series_selector = Selector::parse("a[class=bookTitle]").unwrap();
         let authors_selector = Selector::parse("a[class=authorName]").unwrap();
+        let cover_image_selector = Selector::parse("img[class=bookCover]").unwrap();
         let mut books = vec![];
     
         for book_element in document.select(&book_selector) {
@@ -101,6 +109,7 @@ impl GoodreadsBook {
                     .attr("href")
                     .expect("No URL found")
             );
+            let cover_image = book_element.select(&cover_image_selector).next().map(|x| x.value().attr("src").expect("Couldn't parse src to &str!").to_owned());
             let (title, series, index) = split(&title_and_series).unwrap();
             let authors = authors_elements
                 .iter()
@@ -108,7 +117,7 @@ impl GoodreadsBook {
                 .collect::<Vec<_>>();
             let pages = extract_pages_from_url(&url);
             // let pages = 0; 
-            books.push(Self::new(title, authors, pages, series, index, url));
+            books.push(Self::new(title, authors, pages, series, index, url, cover_image));
         }
         books
     }
@@ -196,7 +205,8 @@ mod tests {
                     366,
                     Some("The Lord of the Rings".to_string()),
                     Some(0.0),
-                    "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string()
+                    "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string(),
+                    Option::None,
                 )
             );
         });
@@ -218,7 +228,8 @@ mod tests {
                     370,
                     Some("London Below".to_string()),
                     Some(1.0),
-                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()
+                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
+                    Option::None
                 )
             );
         });
@@ -240,7 +251,8 @@ mod tests {
                     370,
                     Some("London Below".to_string()),
                     Some(1.0),
-                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string()
+                    "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
+                    Option::None
                 )
             );
         });
@@ -262,7 +274,8 @@ mod tests {
                     400,
                     None,
                     None,
-                    "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string()
+                    "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string(),
+                    Option::None
                 )
             );
         });
