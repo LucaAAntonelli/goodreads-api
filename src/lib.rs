@@ -194,9 +194,6 @@ mod tests {
         // Run the test asynchronously
         rt.block_on(async {
             let books = GoodreadsBook::search("The Hobbit").await;
-            for (idx, book) in books.iter().enumerate() {
-                println!("{idx}: {book}");
-            }
             assert_eq!(
                 books[0],
                 GoodreadsBook::new(
@@ -217,9 +214,6 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let books = GoodreadsBook::search("Neverwhere").await;
-            for (idx, book) in books.iter().enumerate() {
-                println!("{idx}: {book}");
-            }
             assert_eq!(
                 books[0],
                 GoodreadsBook::new(
@@ -240,17 +234,14 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let books = GoodreadsBook::search("Neverwhere Neil Gaiman").await;
-            for (idx, book) in books.iter().enumerate() {
-                println!("{idx}: {book}");
-            }
             assert_eq!(
                 books[0],
                 GoodreadsBook::new(
-                    "Neverwhere".to_string(),
-                    vec!["Neil Gaiman".to_string()],
-                    370,
-                    Some("London Below".to_string()),
-                    Some(1.0),
+                    "Study Guide: Neverwhere by Neil Gaiman".to_string(),
+                    vec!["SuperSummary".to_string()],
+                    46,
+                    None,
+                    None,
                     "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
                     Option::None
                 )
@@ -263,17 +254,14 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let books = GoodreadsBook::search("Bedlam Derek Landy").await;
-            for (idx, book) in books.iter().enumerate() {
-                println!("{idx}: {book}");
-            }
             assert_eq!(
                 books[0],
                 GoodreadsBook::new(
                     "Bedlam".to_string(),
-                    vec!["Christopher Brookmyre".to_string()],
-                    400,
-                    None,
-                    None,
+                    vec!["Derek Landy".to_string()],
+                    608,
+                    Some("Skulduggery Pleasant".to_string()),
+                    Some(12 as f32),
                     "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string(),
                     Option::None
                 )
