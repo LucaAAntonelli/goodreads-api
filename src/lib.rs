@@ -4,7 +4,7 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 use reqwest::Client;
 use regex::Regex;
-use scraper::{ElementRef, Html, Selector};
+use scraper::{Html, Selector};
 use log::{info, debug, error};
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GoodreadsBook {
@@ -127,7 +127,10 @@ impl GoodreadsBook {
 }
 
 pub async fn extract_pages_from_url(url: &str) -> u64 {
-    let response = reqwest::get(url).await.unwrap().text().await.unwrap();
+    
+    
+    let client = Client::builder().user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101").build().expect("Failed to build reqwest client");
+    let response = client.get(url).send().await.unwrap().text().await.unwrap();
     let document = Html::parse_document(&response);
     let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
 
