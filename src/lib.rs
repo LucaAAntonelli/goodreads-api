@@ -109,7 +109,7 @@ impl GoodreadsBook {
                     .attr("href")
                     .expect("No URL found")
             );
-            let cover_image = book_element.select(&cover_image_selector).next().map(|x| x.value().attr("src").expect("Couldn't parse src to &str!").to_owned());
+            let cover_image = book_element.select(&cover_image_selector).next().map(|x| sanitize_url(x.value().attr("src").expect("Couldn't parse src to &str!")));
             let (title, series, index) = split(&title_and_series).unwrap();
             let authors = authors_elements
                 .iter()
@@ -153,6 +153,12 @@ fn split(title_and_series: &str) -> Result<(String, Option<String>, Option<f32>)
     } else {
         Ok((title_and_series.to_string(), None, None))
     }
+}
+
+fn sanitize_url(dirty_url: &str) -> String {
+    // Remove sequence of "._XXXX_" from all URLs where X is any alphanumerical value
+    let re = regex::Regex::new(r"\._[a-zA-Z0-9]{4}_").expect("Failed to build regex pattern");
+    re.replace(dirty_url, "").to_string()
 }
 
 impl PartialEq for GoodreadsBook {
