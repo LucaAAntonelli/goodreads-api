@@ -115,16 +115,19 @@ impl GoodreadsBook {
                 .iter()
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
-            let pages = extract_pages_from_url(&url);
-            // let pages = 0; 
+
+            let pages = extract_pages_from_url(&url).await;
+
+
+            //let pages = 0; 
             books.push(Self::new(title, authors, pages, series, index, url, cover_image));
         }
         books
     }
 }
 
-fn extract_pages_from_url(url: &str) -> u64 {
-    let response = reqwest::blocking::get(url).unwrap().text().unwrap();
+pub async fn extract_pages_from_url(url: &str) -> u64 {
+    let response = reqwest::get(url).await.unwrap().text().await.unwrap();
     let document = Html::parse_document(&response);
     let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
 
