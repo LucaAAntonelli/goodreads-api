@@ -138,7 +138,7 @@ fn extract_pages_from_url(url: &str) -> u64 {
             .next()
             .expect("No pages found")
             .parse()
-            .expect("Failed to parse pages &str to u64")
+            .unwrap_or(0)
     } else {
         0
     }
