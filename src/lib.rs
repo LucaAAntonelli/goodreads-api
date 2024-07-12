@@ -4,7 +4,7 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 use reqwest::Client;
 use regex::Regex;
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use log::{info, debug, error};
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GoodreadsBook {
@@ -127,20 +127,21 @@ fn extract_pages_from_url(url: &str) -> u64 {
     let response = reqwest::blocking::get(url).unwrap().text().unwrap();
     let document = Html::parse_document(&response);
     let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
-    let pages = document
-        .select(&pages_selector)
-        .next()
-        .expect("No pages found")
-        .text()
-        .collect::<Vec<_>>()
-        .concat()
-        .trim()
-        .split_whitespace()
-        .next()
-        .expect("No pages found")
-        .parse::<u64>()
-        .unwrap_or_default();
-    pages
+
+    if let Some(pages) = document.select(&pages_selector).next() {
+        pages
+            .text()
+            .collect::<Vec<_>>()
+            .concat()
+            .trim()
+            .split_whitespace()
+            .next()
+            .expect("No pages found")
+            .parse()
+            .expect("Failed to parse pages &str to u64")
+    } else {
+        0
+    }
 }
 
 fn split(title_and_series: &str) -> Result<(String, Option<String>, Option<f32>), &'static str> {
