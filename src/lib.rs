@@ -2,10 +2,12 @@ pub mod goodreads_api {
 
 use core::fmt;
 use std::fmt::{Display, Formatter};
-use reqwest::Client;
+use reqwest::{Client, Response};
 use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, debug, error};
+use itertools::izip;
+
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GoodreadsBook {
     title: String,
@@ -92,8 +94,21 @@ impl GoodreadsBook {
         let authors_selector = Selector::parse("a[class=authorName]").unwrap();
         let cover_image_selector = Selector::parse("img[class=bookCover]").unwrap();
         let mut books = vec![];
-    
-        for book_element in document.select(&book_selector) {
+
+        let urls = document.select(&book_selector).map(|e| 
+            format!("https://www.goodreads.com{}", e.select(&title_series_selector)
+                                                .next()
+                                                .expect("No title found").value().attr("href").expect("No URL found")
+                                                )).collect::<Vec<String>>();
+        
+
+        let mut book_webpages = vec![]; 
+        for url in &urls {
+            let response = client.get(url).send().await.unwrap().text().await.unwrap();
+            book_webpages.push(response);
+        }
+
+        for (book_element, book_webpage, url) in izip!(document.select(&book_selector), book_webpages, urls) {
             let title_series_element = book_element.select(&title_series_selector).next().expect("No title found");
             let authors_elements = book_element.select(&authors_selector).collect::<Vec<_>>();
             let title_and_series = title_series_element
@@ -102,22 +117,14 @@ impl GoodreadsBook {
                 .concat()
                 .trim()
                 .to_string();
-            let url = format!(
-                "https://www.goodreads.com{}",
-                title_series_element
-                    .value()
-                    .attr("href")
-                    .expect("No URL found")
-            );
+            
             let cover_image = book_element.select(&cover_image_selector).next().map(|x| sanitize_url(x.value().attr("src").expect("Couldn't parse src to &str!")));
             let (title, series, index) = split(&title_and_series).unwrap();
             let authors = authors_elements
                 .iter()
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
-
-            let pages = extract_pages_from_url(&url).await;
-
+            let pages = extract_pages_from_url(book_webpage);
 
             //let pages = 0; 
             books.push(Self::new(title, authors, pages, series, index, url, cover_image));
@@ -126,11 +133,9 @@ impl GoodreadsBook {
     }
 }
 
-pub async fn extract_pages_from_url(url: &str) -> u64 {
+pub fn extract_pages_from_url(response: String) -> u64 {
     
     
-    let client = Client::builder().user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101").build().expect("Failed to build reqwest client");
-    let response = client.get(url).send().await.unwrap().text().await.unwrap();
     let document = Html::parse_document(&response);
     let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
 
