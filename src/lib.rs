@@ -189,7 +189,7 @@ impl Display for GoodreadsBook {
             f,
             "{} by {}, {} pages, series: {}, index: {}",
             self.title,
-            self.authors.join(","),
+            self.authors.join(", "),
             self.pages,
             self.series.as_deref().unwrap_or("None"),
             self.index.clone().map_or_else(|| "None".to_string(), |x| x.to_string())
