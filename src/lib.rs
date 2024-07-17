@@ -94,21 +94,23 @@ impl GoodreadsBook {
         let authors_selector = Selector::parse("a[class=authorName]").unwrap();
         let cover_image_selector = Selector::parse("img[class=bookCover]").unwrap();
         let mut books = vec![];
-
+        info!("Collecting URLs to all books' pages");
         let urls = document.select(&book_selector).map(|e| 
             format!("https://www.goodreads.com{}", e.select(&title_series_selector)
                                                 .next()
                                                 .expect("No title found").value().attr("href").expect("No URL found")
                                                 )).collect::<Vec<String>>();
         
-
+        info!("Collected all URLs");
         let mut book_webpages = vec![]; 
         for url in &urls {
+            info!("Collecting response for url {url}");
             let response = client.get(url).send().await.unwrap().text().await.unwrap();
             book_webpages.push(response);
         }
 
         for (book_element, book_webpage, url) in izip!(document.select(&book_selector), book_webpages, urls) {
+            info!("Processing book");
             let title_series_element = book_element.select(&title_series_selector).next().expect("No title found");
             let authors_elements = book_element.select(&authors_selector).collect::<Vec<_>>();
             let title_and_series = title_series_element
@@ -119,14 +121,18 @@ impl GoodreadsBook {
                 .to_string();
             
             let cover_image = book_element.select(&cover_image_selector).next().map(|x| sanitize_url(x.value().attr("src").expect("Couldn't parse src to &str!")));
+            info!("Processed cover image");
             let (title, series, index) = split(&title_and_series).unwrap();
+            info!("Processed title, series and index");
             let authors = authors_elements
                 .iter()
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
+            info!("Processed authors");
             let pages = extract_pages_from_url(book_webpage);
-
-            //let pages = 0; 
+            info!("Processed number of pages");
+            //let pages = 0;             
+            info!("Adding {title} by {} to vector",  &authors.join(", "));
             books.push(Self::new(title, authors, pages, series, index, url, cover_image));
         }
         books
@@ -134,7 +140,7 @@ impl GoodreadsBook {
 }
 
 pub fn extract_pages_from_url(response: String) -> u64 {
-    
+    info!("Extracting pages from book site");
     
     let document = Html::parse_document(&response);
     let pages_selector = Selector::parse("p[data-testid=pagesFormat]").unwrap();
@@ -156,6 +162,7 @@ pub fn extract_pages_from_url(response: String) -> u64 {
 }
 
 fn split(title_and_series: &str) -> Result<(String, Option<String>, Option<f32>), &'static str> {
+    info!("Splitting String into title, series and index");
     let re = Regex::new(r"^(.*)\s\((.*),\s#(\d+)\)$").unwrap();
     if let Some(captures) = re.captures(title_and_series) {
         let title = captures.get(1).unwrap().as_str().to_string();
@@ -168,6 +175,7 @@ fn split(title_and_series: &str) -> Result<(String, Option<String>, Option<f32>)
 }
 
 fn sanitize_url(dirty_url: &str) -> String {
+    info!("Sanitizing cover image URL");
     // Remove sequence of "._XXXX_" from all URLs where X is any alphanumerical value
     let re = regex::Regex::new(r"\._[a-zA-Z0-9]{4}_").expect("Failed to build regex pattern");
     re.replace(dirty_url, "").to_string()
