@@ -2,13 +2,13 @@ pub mod goodreads_api {
 
 use core::fmt;
 use std::fmt::{Display, Formatter};
-use reqwest::{Client, Response};
+use reqwest::Client;
 use regex::Regex;
 use scraper::{Html, Selector};
-use log::{info, debug, error};
+use log::{info, error};
 use itertools::izip;
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug)]
 pub struct GoodreadsBook {
     title: String,
     authors: Vec<String>,
@@ -86,7 +86,7 @@ impl GoodreadsBook {
                 error!("Failed to parse response: {}", err);
                 panic!("Failed to parse response from Goodreads API");
             });
-        debug!("Received response: {}", response);
+        info!("Received response: {}", response);
     
         let document = Html::parse_document(&response);
         let book_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
