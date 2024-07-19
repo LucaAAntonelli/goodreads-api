@@ -6,8 +6,9 @@ use reqwest::Client;
 use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, error};
-use itertools::izip;
+use itertools::{izip, Itertools};
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct SeriesInfo {
     name: String,
     volume: f32,
@@ -17,6 +18,14 @@ impl SeriesInfo {
     pub fn new(name: String, volume: f32) -> Self {
         Self {name, volume}
     }
+
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn volume(&self) -> f32 {
+        self.volume
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -24,8 +33,7 @@ pub struct GoodreadsBook {
     title: String,
     authors: Vec<String>,
     pages: u64,
-    series: Option<String>,
-    index: Option<f32>,
+    series_info: Option<Vec<SeriesInfo>>,
     url: String,
     cover_image: Option<String>,
 }
@@ -35,8 +43,7 @@ impl GoodreadsBook {
         title: String,
         authors: Vec<String>,
         pages: u64,
-        series: Option<String>,
-        index: Option<f32>,
+        series_info: Option<Vec<SeriesInfo>>,
         url: String,
         cover_image: Option<String>,
     ) -> Self {
@@ -44,8 +51,7 @@ impl GoodreadsBook {
             title,
             authors,
             pages,
-            series,
-            index,
+            series_info,
             url,
             cover_image,
         }
@@ -63,12 +69,9 @@ impl GoodreadsBook {
         self.pages
     }
 
-    pub fn series(&self) -> Option<String> {
-        self.series.clone()
-    }
-
-    pub fn index(&self) -> Option<f32> {
-        self.index.clone()
+    pub fn series_info(&self) -> Option<Vec<SeriesInfo>> {
+        self.series_info.clone()
+    
     }
 
     pub fn url(&self) -> String {
@@ -133,7 +136,8 @@ impl GoodreadsBook {
             
             let cover_image = book_element.select(&cover_image_selector).next().map(|x| sanitize_url(x.value().attr("src").expect("Couldn't parse src to &str!")));
             info!("Processed cover image");
-            let (title, series, index) = split(&title_and_series);
+            let (title, series_info) = split(&title_and_series);
+
             info!("Processed title, series and index");
             let authors = authors_elements
                 .iter()
@@ -144,7 +148,7 @@ impl GoodreadsBook {
             info!("Processed number of pages");
             //let pages = 0;             
             info!("Adding {title} by {} to vector",  &authors.join(", "));
-            books.push(Self::new(title, authors, pages, series, index, url, cover_image));
+            books.push(Self::new(title, authors, pages, series_info, url, cover_image));
         }
         books
     }
@@ -172,27 +176,28 @@ pub fn extract_pages_from_url(response: String) -> u64 {
     }
 }
 
-pub fn split(title_and_series: &str) -> (String, Option<String>, Option<f32>) {
+pub fn split(title_and_series: &str) -> (String, Option<Vec<SeriesInfo>>) {
     info!("Splitting String into title, series and index");
     let re = Regex::new(r"^(.*)\s\((.*)\)$").unwrap();
     let series_re = Regex::new(r"([^#]+)#(\d+)").unwrap();
-    let mut series_info_vec = vec![];
+    
     println!("{title_and_series}");
     if let Some(captures) = re.captures(title_and_series) {
+        let mut series_info_vec = vec![];
         let title = captures.get(1).unwrap().as_str().to_string();
         let series_info_string = captures.get(2).unwrap().as_str();
         for series_cap in series_re.captures_iter(series_info_string) {
-            let series_name = series_cap.get(1).unwrap().as_str().trim().replace(",", "").to_string();
+            let series_name = series_cap.get(1).unwrap().as_str().trim().replace(",", "").replace(";", "").trim().to_string();
             let volume = series_cap.get(2).unwrap().as_str().parse::<f32>().unwrap();
-            series_info_vec.push((series_name, volume));
+            series_info_vec.push(SeriesInfo::new(series_name, volume));
         }
         if series_info_vec.len() > 0 {
-            (title, Some(series_info_vec[0].0.clone()), Some(series_info_vec[0].1))
+            (title, Some(series_info_vec))
         } else{
-            (title_and_series.to_owned(), None, None)
+            (title_and_series.to_owned(), None)
         }
     } else {
-        (title_and_series.to_owned(), None, None)
+        (title_and_series.to_owned(), None)
     }
 }
 
@@ -208,8 +213,7 @@ impl PartialEq for GoodreadsBook {
         self.title == other.title
             && self.authors == other.authors
             && self.pages == other.pages
-            && self.series == other.series
-            && self.index == other.index
+            && self.series_info == other.series_info
     }
 }
 
@@ -217,12 +221,14 @@ impl Display for GoodreadsBook {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "{} by {}, {} pages, series: {}, index: {}",
+            "{} by {}, {} pages, series: {}",
             self.title,
             self.authors.join(", "),
             self.pages,
-            self.series.as_deref().unwrap_or("None"),
-            self.index.clone().map_or_else(|| "None".to_string(), |x| x.to_string())
+            match &self.series_info {
+                Some(series_info) => series_info.iter().map(|x| format!("{}, book #{}", x.name(), x.volume())).join(", "),
+                None => "None".to_owned()
+            }
         )
     }
 }
@@ -232,6 +238,7 @@ impl Display for GoodreadsBook {
 mod tests {
     use super::*;
     use crate::goodreads_api::GoodreadsBook;
+    use goodreads_api::SeriesInfo;
     use tokio::runtime::Runtime;
 
     #[test]
@@ -248,8 +255,7 @@ mod tests {
                     "The Hobbit".to_string(),
                     vec!["J.R.R. Tolkien".to_string()],
                     366,
-                    Some("The Lord of the Rings".to_string()),
-                    Some(0.0),
+                    Some(vec![SeriesInfo::new("The Lord of the Rings".to_string(), 0.0)]),
                     "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string(),
                     Option::None,
                 )
@@ -268,8 +274,7 @@ mod tests {
                     "Neverwhere".to_string(),
                     vec!["Neil Gaiman".to_string()],
                     370,
-                    Some("London Below".to_string()),
-                    Some(1.0),
+                    Some(vec![SeriesInfo::new("London Below".to_string(), 1.0)]),
                     "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
                     Option::None
                 )
@@ -289,7 +294,6 @@ mod tests {
                     vec!["SuperSummary".to_string()],
                     46,
                     None,
-                    None,
                     "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
                     Option::None
                 )
@@ -308,8 +312,7 @@ mod tests {
                     "Bedlam".to_string(),
                     vec!["Derek Landy".to_string()],
                     608,
-                    Some("Skulduggery Pleasant".to_string()),
-                    Some(12 as f32),
+                    Some(vec![SeriesInfo::new("Skulduggery Pleasant".to_string(), 12.0)]),
                     "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string(),
                     Option::None
                 )
@@ -319,6 +322,17 @@ mod tests {
 
     #[test]
     fn test_title_series_volume_splitter() {
-        assert_eq!(("Neverwhere".to_owned(), Some("London Below".to_owned()), Some(1 as f32)), goodreads_api::split("Neverwhere (London Below, #1)"));
+        assert_eq!(("Neverwhere".to_owned(), Some(vec![SeriesInfo::new("London Below".to_string(), 1.0)])), goodreads_api::split("Neverwhere (London Below, #1)"));
+    }
+
+    #[test]
+    fn test_multiple_series() {
+        assert_eq!(
+            ("The Colour of Magic".to_owned(), 
+            Some(vec![
+                SeriesInfo::new("Discworld".to_owned(), 1.0),
+                SeriesInfo::new("Rincewind".to_owned(), 1.0)
+            ])), 
+            goodreads_api::split("The Colour of Magic (Discworld #1; Rincewind #1)"));
     }
 }
