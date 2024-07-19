@@ -181,7 +181,6 @@ pub fn split(title_and_series: &str) -> (String, Option<Vec<SeriesInfo>>) {
     let re = Regex::new(r"^(.*)\s\((.*)\)$").unwrap();
     let series_re = Regex::new(r"([^#]+)#(\d+)").unwrap();
     
-    println!("{title_and_series}");
     if let Some(captures) = re.captures(title_and_series) {
         let mut series_info_vec = vec![];
         let title = captures.get(1).unwrap().as_str().to_string();
