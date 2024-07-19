@@ -122,7 +122,7 @@ impl GoodreadsBook {
             
             let cover_image = book_element.select(&cover_image_selector).next().map(|x| sanitize_url(x.value().attr("src").expect("Couldn't parse src to &str!")));
             info!("Processed cover image");
-            let (title, series, index) = split(&title_and_series).unwrap();
+            let (title, series, index) = split(&title_and_series);
             info!("Processed title, series and index");
             let authors = authors_elements
                 .iter()
@@ -161,16 +161,27 @@ pub fn extract_pages_from_url(response: String) -> u64 {
     }
 }
 
-fn split(title_and_series: &str) -> Result<(String, Option<String>, Option<f32>), &'static str> {
+pub fn split(title_and_series: &str) -> (String, Option<String>, Option<f32>) {
     info!("Splitting String into title, series and index");
-    let re = Regex::new(r"^(.*)\s\((.*),\s#(\d+)\)$").unwrap();
+    let re = Regex::new(r"^(.*)\s\((.*)\)$").unwrap();
+    let series_re = Regex::new(r"([^#]+)#(\d+)").unwrap();
+    let mut series_info_vec = vec![];
+    println!("{title_and_series}");
     if let Some(captures) = re.captures(title_and_series) {
         let title = captures.get(1).unwrap().as_str().to_string();
-        let series = captures.get(2).unwrap().as_str().to_string();
-        let index = captures.get(3).unwrap().as_str().parse::<f32>().unwrap();
-        Ok((title, Some(series), Some(index)))
+        let series_info_string = captures.get(2).unwrap().as_str();
+        for series_cap in series_re.captures_iter(series_info_string) {
+            let series_name = series_cap.get(1).unwrap().as_str().trim().replace(",", "").to_string();
+            let volume = series_cap.get(2).unwrap().as_str().parse::<f32>().unwrap();
+            series_info_vec.push((series_name, volume));
+        }
+        if series_info_vec.len() > 0 {
+            (title, Some(series_info_vec[0].0.clone()), Some(series_info_vec[0].1))
+        } else{
+            (title_and_series.to_owned(), None, None)
+        }
     } else {
-        Ok((title_and_series.to_string(), None, None))
+        (title_and_series.to_owned(), None, None)
     }
 }
 
@@ -293,5 +304,10 @@ mod tests {
                 )
             );
         });
+    }
+
+    #[test]
+    fn test_title_series_volume_splitter() {
+        assert_eq!(("Neverwhere".to_owned(), Some("London Below".to_owned()), Some(1 as f32)), goodreads_api::split("Neverwhere (London Below, #1)"));
     }
 }
