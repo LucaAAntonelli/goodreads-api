@@ -8,6 +8,17 @@ use scraper::{Html, Selector};
 use log::{info, error};
 use itertools::izip;
 
+pub struct SeriesInfo {
+    name: String,
+    volume: f32,
+}
+
+impl SeriesInfo {
+    pub fn new(name: String, volume: f32) -> Self {
+        Self {name, volume}
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GoodreadsBook {
     title: String,
