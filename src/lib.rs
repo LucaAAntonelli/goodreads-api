@@ -100,7 +100,6 @@ impl GoodreadsBook {
                 error!("Failed to parse response: {}", err);
                 panic!("Failed to parse response from Goodreads API");
             });
-        info!("Received response: {}", response);
     
         let document = Html::parse_document(&response);
         let book_selector = Selector::parse(r#"tr[itemscope][itemtype="http://schema.org/Book"]"#).unwrap();
@@ -144,9 +143,9 @@ impl GoodreadsBook {
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
             info!("Processed authors");
-            let pages = extract_pages_from_url(book_webpage);
+            //let pages = extract_pages_from_url(book_webpage);
             info!("Processed number of pages");
-            //let pages = 0;             
+            let pages = 0;             
             info!("Adding {title} by {} to vector",  &authors.join(", "));
             books.push(Self::new(title, authors, pages, series_info, url, cover_image));
         }
