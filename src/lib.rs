@@ -7,6 +7,8 @@ use regex::Regex;
 use scraper::{Html, Selector};
 use log::{info, error};
 use itertools::{izip, Itertools};
+use futures::future::join_all;
+use tokio::task;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SeriesInfo {
@@ -115,12 +117,22 @@ impl GoodreadsBook {
                                                 )).collect::<Vec<String>>();
         
         info!("Collected all URLs");
-        let mut book_webpages = vec![]; 
-        for url in &urls {
-            info!("Collecting response for url {url}");
-            let response = client.get(url).send().await.unwrap().text().await.unwrap();
-            book_webpages.push(response);
-        }
+        //let mut book_webpages = vec![]; 
+        //for url in &urls {
+        //    info!("Collecting response for url {url}");
+        //    let response = client.get(url).send().await.unwrap().text().await.unwrap();
+        //    book_webpages.push(response);
+        //}
+
+        let book_webpages = join_all(urls.iter().map(|url| {
+            let client = client.clone();
+            let url = url.clone();
+            task::spawn(async move {
+                info!("Collecting response for {url}");
+                client.get(&url).send().await.ok()?.text().await.ok()
+            })
+        }))
+        .await;
 
         for (book_element, book_webpage, url) in izip!(document.select(&book_selector), book_webpages, urls) {
             info!("Processing book");
@@ -143,9 +155,8 @@ impl GoodreadsBook {
                 .map(|x| x.text().collect::<Vec<_>>().concat())
                 .collect::<Vec<_>>();
             info!("Processed authors");
-            //let pages = extract_pages_from_url(book_webpage);
+            let pages = extract_pages_from_url(book_webpage.unwrap().expect("No returned book webpage!"));
             info!("Processed number of pages");
-            let pages = 0;             
             info!("Adding {title} by {} to vector",  &authors.join(", "));
             books.push(Self::new(title, authors, pages, series_info, url, cover_image));
         }
