@@ -16,6 +16,12 @@ pub struct SeriesInfo {
     volume: f32,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Author {
+    pub given_names: String,
+    pub last_name: String
+}
+
 impl SeriesInfo {
     pub fn new(name: String, volume: f32) -> Self {
         Self {name, volume}
@@ -30,10 +36,27 @@ impl SeriesInfo {
     }
 }
 
+impl Display for Author {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {}",
+            self.given_names,
+            self.last_name,
+        )
+    }
+}
+
+impl Author {
+    pub fn new(given_names: String, last_name: String) -> Self {
+        Self{given_names, last_name}
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct GoodreadsBook {
     title: String,
-    authors: Vec<String>,
+    authors: Vec<Author>,
     pages: u64,
     series_info: Option<Vec<SeriesInfo>>,
     url: String,
@@ -43,7 +66,7 @@ pub struct GoodreadsBook {
 impl GoodreadsBook {
     pub fn new(
         title: String,
-        authors: Vec<String>,
+        authors: Vec<Author>,
         pages: u64,
         series_info: Option<Vec<SeriesInfo>>,
         url: String,
@@ -63,7 +86,7 @@ impl GoodreadsBook {
         self.title.clone()
     }
 
-    pub fn authors(&self) -> Vec<String> {
+    pub fn authors(&self) -> Vec<Author> {
         self.authors.clone()
     }
 
@@ -158,6 +181,12 @@ impl GoodreadsBook {
             let pages = extract_pages_from_url(book_webpage.unwrap().expect("No returned book webpage!"));
             info!("Processed number of pages");
             info!("Adding {title} by {} to vector",  &authors.join(", "));
+            let authors = authors.into_iter().filter_map(|name| {
+                let mut parts = name.split_ascii_whitespace();
+                let first = parts.next()?;
+                let last = parts.next()?;
+                Some(Author {given_names: first.to_string(), last_name: last.to_string()})
+            }).collect();
             books.push(Self::new(title, authors, pages, series_info, url, cover_image));
         }
         books
@@ -232,7 +261,7 @@ impl Display for GoodreadsBook {
             f,
             "{} by {}, {} pages, series: {}",
             self.title,
-            self.authors.join(", "),
+            self.authors.clone().into_iter().join(", "),
             self.pages,
             match &self.series_info {
                 Some(series_info) => series_info.iter().map(|x| format!("{}, book #{}", x.name(), x.volume())).join(", "),
@@ -247,7 +276,7 @@ impl Display for GoodreadsBook {
 mod tests {
     use super::*;
     use crate::goodreads_api::GoodreadsBook;
-    use goodreads_api::SeriesInfo;
+    use goodreads_api::{SeriesInfo, Author};
     use tokio::runtime::Runtime;
 
     #[test]
@@ -262,7 +291,7 @@ mod tests {
                 books[0],
                 GoodreadsBook::new(
                     "The Hobbit".to_string(),
-                    vec!["J.R.R. Tolkien".to_string()],
+                    vec![Author::new("J.R.R.".to_string(), "Tolkien".to_string())],
                     366,
                     Some(vec![SeriesInfo::new("The Lord of the Rings".to_string(), 0.0)]),
                     "https://www.goodreads.com/book/show/5907.The_Hobbit?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=1".to_string(),
@@ -281,7 +310,7 @@ mod tests {
                 books[0],
                 GoodreadsBook::new(
                     "Neverwhere".to_string(),
-                    vec!["Neil Gaiman".to_string()],
+                    vec![Author::new("Neil".to_string(), "Gaiman".to_string())],
                     370,
                     Some(vec![SeriesInfo::new("London Below".to_string(), 1.0)]),
                     "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
@@ -300,7 +329,7 @@ mod tests {
                 books[0],
                 GoodreadsBook::new(
                     "Study Guide: Neverwhere by Neil Gaiman".to_string(),
-                    vec!["SuperSummary".to_string()],
+                    vec![Author::new("SuperSummary".to_string(), "".to_string())],
                     46,
                     None,
                     "https://www.goodreads.com/book/show/14497.Neverwhere?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=2".to_string(),
@@ -319,7 +348,7 @@ mod tests {
                 books[0],
                 GoodreadsBook::new(
                     "Bedlam".to_string(),
-                    vec!["Derek Landy".to_string()],
+                    vec![Author::new("Derek".to_string(), "Landy".to_string())],
                     608,
                     Some(vec![SeriesInfo::new("Skulduggery Pleasant".to_string(), 12.0)]),
                     "https://www.goodreads.com/book/show/135390.Bedlam?from_search=true&from_srp=true&qid=NAtwtTrIMc&rank=3".to_string(),
